@@ -38,6 +38,7 @@ module ActiveFedora
       return to_a.find { |*block_args| yield(*block_args) } if block_given?
       options = args.extract_options!
       options = options.dup
+
       cast = if @klass == ActiveFedora::Base && !options.has_key?(:cast)
         true
       else 
@@ -197,20 +198,29 @@ module ActiveFedora
         ActiveFedora::Base
       else
         # The true class may be a subclass of @klass, so always use from_class_uri
-        resource_class = Model.from_class_uri(has_model_value(resource)) || ActiveFedora::Base
-        unless equivalent_class?(resource_class)
-          raise ActiveFedora::ActiveFedoraError.new("Model mismatch. Expected #{@klass}. Got: #{resource_class}") 
-        end
-        resource_class
+        has_model_value(resource) || ActiveFedora::Base
       end
     end
 
     def has_model_value(resource)
-      resource.graph.query([nil, ActiveFedora::RDF::Fcrepo::Model.hasModel, nil]).first.object.to_s
-    end
+      best_model_match = nil
+     
+      resource.graph.query([nil, ActiveFedora::RDF::Fcrepo::Model.hasModel, nil]).each do |rg|
 
-    def equivalent_class?(other_class)
-      other_class <= @klass
+        model_value = Model.from_class_uri(rg.object.to_s)
+
+        if model_value
+
+          best_model_match ||= model_value
+
+          # If there is an inheritance structure, use the most specific case.
+          if best_model_match > model_value
+            best_model_match = model_value
+          end
+        end
+      end
+      
+      best_model_match
     end
 
     def find_with_ids(ids, cast)
