@@ -39,10 +39,30 @@ describe "delegating attributes" do
   end
 
   describe "#index_config" do
-    subject { RdfObject.index_config }
-    it "should have configuration " do
-      expect(subject[:resource_type].behaviors).to eq [:stored_searchable, :facetable]
-      expect(subject[:depositor].behaviors).to eq [:stored_searchable]
+    context "on a class with properties" do
+      subject { RdfObject.index_config }
+      it "should have configuration " do
+        expect(subject[:resource_type].behaviors).to eq [:stored_searchable, :facetable]
+        expect(subject[:depositor].behaviors).to eq [:stored_searchable]
+      end
+    end
+
+    context "on a class with inherited properties" do
+      before do
+        class InheritedObject < RdfObject
+        end
+      end
+
+      after do
+        Object.send(:remove_const, :InheritedObject)
+      end
+
+      subject { InheritedObject.index_config }
+
+      it "should have configuration " do
+        expect(subject[:resource_type].behaviors).to eq [:stored_searchable, :facetable]
+        expect(subject[:depositor].behaviors).to eq [:stored_searchable]
+      end
     end
   end
 
