@@ -188,6 +188,56 @@ describe ActiveFedora::Base do
       end
     end
   end
+
+  describe "casting inheritance super class test cases" do
+    before :all do
+      class SuperclassObject < ActiveFedora::Base
+        belongs_to :superclass_collection, predicate: ActiveFedora::RDF::Fcrepo::RelsExt.isPartOf, class_name: 'SuperclassCollection'
+
+        def assert_content_model
+          self.has_model = [self.class.to_s, self.class.superclass.to_s]
+        end
+      end
+
+      class SubclassObject < SuperclassObject
+      end
+
+      class SuperclassCollection < ActiveFedora::Base
+        has_many :objects, predicate: ActiveFedora::RDF::Fcrepo::RelsExt.isPartOf, class_name: 'SuperclassObject', autosave: true
+      end
+    end
+    after :all do
+      Object.send(:remove_const, :SuperclassObject)
+      Object.send(:remove_const, :SubclassObject)
+      Object.send(:remove_const, :SuperclassCollection)
+    end
+
+    describe "Adding subclass objects" do
+      context "Add a subclass_object into a superclass_collection" do
+        before do
+          @superclass_collection = SuperclassCollection.create
+          @subclass_object = SubclassObject.create
+          @superclass_collection.objects = [@subclass_object]
+          @superclass_collection.save!
+        end
+        it "should have added the inverse relationship for the correct class" do
+          expect(@subclass_object.superclass_collection).to be_instance_of SuperclassCollection
+        end
+      end
+
+      context "Set the superclass_collection of a subclass object"
+        before do
+          @superclass_collection = SuperclassCollection.create
+          @subclass_object = SubclassObject.create
+          @subclass_object.superclass_collection = @superclass_collection
+          @subclass_object.save!
+        end
+        it "should have added the inverse relationship for the correct class" do
+          expect(@superclass_collection.objects.size).to eq 1
+          expect(@superclass_collection.objects[0]).to be_instance_of SubclassObject
+        end
+      end
+    end
 end
 
 
